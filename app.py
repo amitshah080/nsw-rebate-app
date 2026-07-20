@@ -20,14 +20,14 @@ def load_data(file_path):
     df_avg = pd.read_excel(xls, sheet_name="Average Zone")
     df_cold = pd.read_excel(xls, sheet_name="Cold Zone")
 
-    # Apply 30% reduction to incentive calculations
+    # Apply 10% reduction to incentive calculations
     for df in [df_avg, df_cold]:
         if "Total incentive - NEW" in df.columns:
-            df["Total incentive - NEW"] *= 0.70
+            df["Total incentive - NEW"] *= 0.90
         if "ESCs replacement" in df.columns:
-            df["ESCs replacement"] *= 0.70
+            df["ESCs replacement"] *= 0.90
         if "PRCs replacement" in df.columns:
-            df["PRCs replacement"] *= 0.70
+            df["PRCs replacement"] *= 0.90
 
     return df_avg, df_cold
 
@@ -136,3 +136,5 @@ st.download_button(
     file_name="nsw_rebate_filtered.csv",
     mime="text/csv",
 )
+
+```

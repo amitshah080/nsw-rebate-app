@@ -136,5 +136,3 @@ st.download_button(
     file_name="nsw_rebate_filtered.csv",
     mime="text/csv",
 )
-
-```

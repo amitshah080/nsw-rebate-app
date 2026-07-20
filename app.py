@@ -60,10 +60,16 @@ selected_configs = st.sidebar.multiselect("Select Type:", configs, default=[])
 eligibility_options = active_df[eligibility_col].dropna().unique()
 selected_eligibility = st.sidebar.multiselect("Eligibility Status:", eligibility_options, default=["ELIGIBLE"])
 
-# Cooling Capacity Slider
+# Cooling Capacity Input (Numeric)
 min_kw = float(active_df["C-Total Cool Rated"].min())
 max_kw = float(active_df["C-Total Cool Rated"].max())
-selected_kw = st.sidebar.slider("Cooling Capacity Range (kW):", min_kw, max_kw, (2.0, 15.0), step=0.5)
+selected_kw = st.sidebar.number_input(
+    "Cooling Capacity (kW):",
+    min_value=min_kw,
+    max_value=max_kw,
+    value=min_kw,
+    step=0.1
+)
 
 # Text Search
 search_term = st.sidebar.text_input("Model Search (e.g., FDYA, PEA-M):")
@@ -81,8 +87,7 @@ if selected_eligibility:
     filtered_df = filtered_df[filtered_df[eligibility_col].isin(selected_eligibility)]
 
 filtered_df = filtered_df[
-    (filtered_df["C-Total Cool Rated"] >= selected_kw[0]) & 
-    (filtered_df["C-Total Cool Rated"] <= selected_kw[1])
+    filtered_df["C-Total Cool Rated"] == selected_kw
 ]
 
 if search_term:

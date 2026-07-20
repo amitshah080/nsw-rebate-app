@@ -14,12 +14,12 @@ st.caption("Smart filtering tool for NSW PDRS & ESS Air Conditioning Claims")
 # 2. File Loading Function
 EXCEL_FILE = "claim DOC-20260701-WA0006.xlsx"
 
+
 @st.cache_data
 def load_data(file_path):
     xls = pd.ExcelFile(file_path)
     df_avg = pd.read_excel(xls, sheet_name="Average Zone")
     df_cold = pd.read_excel(xls, sheet_name="Cold Zone")
-    df_postcodes = pd.read_excel(xls, sheet_name="Postcodes")
 
     # Apply 30% reduction to incentive calculations
     for df in [df_avg, df_cold]:
@@ -30,10 +30,11 @@ def load_data(file_path):
         if "PRCs replacement" in df.columns:
             df["PRCs replacement"] *= 0.70
 
-    return df_avg, df_cold, df_postcodes
+    return df_avg, df_cold
+
 
 try:
-    df_avg, df_cold, df_postcodes = load_data(EXCEL_FILE)
+    df_avg, df_cold = load_data(EXCEL_FILE)
 except Exception as e:
     st.error(f"Error loading {EXCEL_FILE}: {e}")
     st.stop()
@@ -45,23 +46,9 @@ debar.header("Filter Options")
 # Climate Zone Selection
 zone_choice = debar.radio("Select Climate Zone:", ("Average Zone", "Cold Zone"))
 active_df = df_avg if zone_choice == "Average Zone" else df_cold
-eligibility_col = "ELIGIBLE_MIXED" if zone_choice == "Average Zone" else "ELIGIBLE_COLD"
-
-# Postcode Quick Lookup Tool
-debar.markdown("---")
-debar.subheader("Postcode Zone Checker")
-postcode_input = debar.text_input("Enter Postcode:", value="2000")
-
-if postcode_input:
-    matched = df_postcodes[df_postcodes["Postcode"].astype(str) == postcode_input.strip()]
-    if not matched.empty:
-        z = matched.iloc[0]["Zone"]
-        if z == zone_choice.replace(" Zone", ""):
-            debar.success(f"Postcode {postcode_input} is in {z} Zone")
-        else:
-            debar.warning(f"Postcode {postcode_input} is in {z} Zone, but you selected {zone_choice}")
-    else:
-        debar.info("Postcode not found in list")
+eligibility_col = (
+    "ELIGIBLE_MIXED" if zone_choice == "Average Zone" else "ELIGIBLE_COLD"
+)
 
 debar.markdown("---")
 
@@ -82,7 +69,7 @@ ted_kw = debar.number_input(
     min_value=min_kw,
     max_value=max_kw,
     value=min_kw,
-    step=0.1
+    step=0.1,
 )
 
 model_search = debar.text_input("Model Search (e.g., FDYA, PEA-M):")
@@ -98,14 +85,18 @@ if ted_eligibility:
     filtered_df = filtered_df[filtered_df[eligibility_col].isin(ted_eligibility)]
 
 filtered_df = filtered_df[
-    (filtered_df["C-Total Cool Rated"] >= ted_kw - 0.1) &
-    (filtered_df["C-Total Cool Rated"] <= ted_kw + 0.1)
+    (filtered_df["C-Total Cool Rated"] >= ted_kw - 0.1)
+    & (filtered_df["C-Total Cool Rated"] <= ted_kw + 0.1)
 ]
 
 if model_search:
     filtered_df = filtered_df[
-        filtered_df["Model_No"].astype(str).str.contains(model_search, case=False, na=False) |
-        filtered_df["Brand"].astype(str).str.contains(model_search, case=False, na=False)
+        filtered_df["Model_No"]
+        .astype(str)
+        .str.contains(model_search, case=False, na=False)
+        | filtered_df["Brand"]
+        .astype(str)
+        .str.contains(model_search, case=False, na=False)
     ]
 
 # 5. Display Counts & Summary
@@ -113,11 +104,19 @@ st.markdown(f"## Model Results ({zone_choice})")
 
 col1, col2, col3, col4 = st.columns(4)
 col1.metric("Matching Models", len(filtered_df))
-col2.metric("Eligible Units", len(filtered_df[filtered_df[eligibility_col] == "ELIGIBLE"]))
+col2.metric(
+    "Eligible Units",
+    len(filtered_df[filtered_df[eligibility_col] == "ELIGIBLE"]),
+)
 
 if not filtered_df.empty:
-    col3.metric("Max New Incentive", f"${filtered_df['Total incentive - NEW'].max():,.2f}")
-    col4.metric("Max Repl. Incentive", f"${filtered_df['ESCs replacement'].max():,.2f}")
+    col3.metric(
+        "Max New Incentive",
+        f"${filtered_df['Total incentive - NEW'].max():,.2f}",
+    )
+    col4.metric(
+        "Max Repl. Incentive", f"${filtered_df['ESCs replacement'].max():,.2f}"
+    )
 else:
     col3.metric("Max New Incentive", "$0.00")
     col4.metric("Max Repl. Incentive", "$0.00")
@@ -126,20 +125,25 @@ st.markdown("---")
 
 # 6. Display Interactive Table
 display_cols = [
-    "Model_No", "Brand", "Configuration1", "C-Total Cool Rated", 
-    eligibility_col, "Total incentive - NEW", "ESCs replacement"
+    "Model_No",
+    "Brand",
+    "Configuration1",
+    "C-Total Cool Rated",
+    eligibility_col,
+    "Total incentive - NEW",
+    "ESCs replacement",
 ]
 
 st.dataframe(
-    filtered_df[display_cols].rename(columns={eligibility_col: "Eligibility"}), 
-    use_container_width=True, 
-    height=450
+    filtered_df[display_cols].rename(columns={eligibility_col: "Eligibility"}),
+    use_container_width=True,
+    height=450,
 )
 
 # 7. Download Filtered Data as CSV
 st.download_button(
     label="Download Filtered Data as CSV",
-    data=filtered_df.to_csv(index=False).encode('utf-8'),
-    file_name='nsw_rebate_filtered.csv',
-    mime='text/csv'
+    data=filtered_df.to_csv(index=False).encode("utf-8"),
+    file_name="nsw_rebate_filtered.csv",
+    mime="text/csv",
 )
